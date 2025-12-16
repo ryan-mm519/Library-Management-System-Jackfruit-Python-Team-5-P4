@@ -1,75 +1,117 @@
-books = {}
-issued_books = {}
+# ---------------- LIBRARY SYSTEM (CLOSURE) ---------------- #
 
-def add_book():
-    bid = input("Enter Book ID: ")
-    title = input("Enter Title: ")
-    author = input("Enter Author: ")
-    books[bid] = {"title": title, "author": author, "available": True}
-    print("Book added successfully.\n")
+def create_library():
+    books, users, bid = {}, {}, 1
 
-def remove_book():
-    bid = input("Enter Book ID to remove: ")
-    if bid in books:
-        del books[bid]
-        print("Book removed.\n")
-    else:
-        print("Book not found.\n")
+    def add_book(t, a, y, c):
+        nonlocal bid
+        books[bid] = [t, a, y, c, c]
+        bid += 1
+        return f"Book added with ID {bid-1}"
 
-def search_book():
-    key = input("Enter title or Book ID to search: ").lower()
-    found = False
-    for bid, info in books.items():
-        if key in bid.lower() or key in info["title"].lower():
-            print(bid, info)
-            found = True
-    if not found:
-        print("No matching book found.\n")
+    def remove_book(b):
+        return "Book removed" if books.pop(b, None) else "Invalid book ID"
 
-def issue_book():
-    usn = input("Enter Student USN: ")
-    bid = input("Enter Book ID to issue: ")
+    def view_all_books():
+        return books
 
-    if bid not in books:
-        print("Book not found.\n")
-        return
-    if not books[bid]["available"]:
-        print("Book already issued.\n")
-        return
+    def register_user(u):
+        users.setdefault(u, set())
+        return "User ready"
 
-    books[bid]["available"] = False
-    issued_books.setdefault(usn, []).append(bid)
-    print("Book issued successfully.\n")
+    def borrow_book(u, b):
+        if u not in users or b not in books or books[b][4] < 1:
+            return "Cannot borrow"
+        users[u].add(b)
+        books[b][4] -= 1
+        return "Book borrowed"
 
-def return_book():
-    usn = input("Enter Student USN: ")
-    bid = input("Enter Book ID to return: ")
+    def return_book(u, b):
+        if b not in users.get(u, []):
+            return "Cannot return"
+        users[u].remove(b)
+        books[b][4] += 1
+        return "Book returned"
 
-    if usn in issued_books and bid in issued_books[usn]:
-        issued_books[usn].remove(bid)
-        books[bid]["available"] = True
-        print("Book returned.\n")
-    else:
-        print("Invalid return.\n")
+    def search_books(k):
+        k = k.lower()
+        return [(i, *v) for i, v in books.items()
+                if k in v[0].lower() or k in v[1].lower()]
 
-def display_books():
-    for bid, info in books.items():
-        print(bid, info)
-    print()
+    def view_available_books():
+        return [(i, *v) for i, v in books.items() if v[4] > 0]
 
-def menu():
+    return locals()
+
+
+# ---------------- ADMIN MENU ---------------- #
+
+def admin_menu(lib):
     while True:
-        print("1 Add\n2 Remove\n3 Search\n4 Issue\n5 Return\n6 Display\n0 Exit")
-        choice = input("Enter choice: ")
-        print()
+        print("1. Add Book\n2. Remove Book\n3. View Books\n4. Back")
 
-        if choice == "1": add_book()
-        elif choice == "2": remove_book()
-        elif choice == "3": search_book()
-        elif choice == "4": issue_book()
-        elif choice == "5": return_book()
-        elif choice == "6": display_books()
-        elif choice == "0": break
-        else: print("Invalid choice\n")
+        c = input("Choice: ")
 
-menu()
+        if c == "1":
+            print(lib["add_book"](
+                input("Title: "), input("Author: "),
+                input("Year: "), int(input("Copies: "))
+            ))
+        elif c == "2":
+            print(lib["remove_book"](int(input("Book ID: "))))
+        elif c == "3":
+            for i, b in lib["view_all_books"]().items():
+                print(i, "|", b[0], "by", b[1], "| Available:", b[4])
+        elif c == "4":
+            break
+        else:
+            print("Invalid choice")
+
+
+# ---------------- CUSTOMER MENU ---------------- #
+
+def customer_menu(lib):
+    user = input("Username: ")
+    lib["register_user"](user)
+
+    while True:
+        print("\n1.Search  2.Borrow  3.Return  4.Available  5.Back")
+        c = input("Choice: ")
+
+        if c == "1":
+            for r in lib["search_books"](input("Keyword: ")):
+                print(r)
+        elif c == "2":
+            print(lib["borrow_book"](user, int(input("Book ID: "))))
+        elif c == "3":
+            print(lib["return_book"](user, int(input("Book ID: "))))
+        elif c == "4":
+            for b in lib["view_available_books"]():
+                print(b)
+        elif c == "5":
+            break
+        else:
+            print("Invalid choice")
+
+
+# ---------------- MAIN PROGRAM ---------------- #
+
+def main():
+    lib = create_library()
+
+    while True:
+        print("\n1.Admin  \n2.Customer  \n3.Exit")
+        c = input("Choice: ")
+
+        if c == "1":
+            admin_menu(lib)
+        elif c == "2":
+            customer_menu(lib)
+        elif c == "3":
+            print("Goodbye!")
+            break
+        else:
+            print("Invalid choice")
+
+
+main()
